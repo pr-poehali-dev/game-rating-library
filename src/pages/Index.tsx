@@ -62,6 +62,8 @@ const Index = () => {
   const [filterRating, setFilterRating] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editGame, setEditGame] = useState<Game | null>(null);
   
   const [newGame, setNewGame] = useState({
     title: '',
@@ -79,6 +81,37 @@ const Index = () => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && editGame) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditGame({ ...editGame, imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const openEditDialog = (game: Game) => {
+    setEditGame({ ...game });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editGame) return;
+    
+    const updatedGames = games.map(g => 
+      g.id === editGame.id ? editGame : g
+    );
+    setGames(updatedGames);
+    setIsEditDialogOpen(false);
+    setEditGame(null);
+    toast({
+      title: 'Изменения сохранены!',
+      description: `${editGame.title} обновлена`
+    });
   };
 
   const [editRating, setEditRating] = useState<GameRating>({
@@ -362,7 +395,7 @@ const Index = () => {
                 <CardDescription className="line-clamp-2">{game.description}</CardDescription>
               </CardHeader>
               
-              <CardContent>
+              <CardContent className="space-y-2">
                 <Button 
                   onClick={() => openRatingDialog(game)}
                   variant={game.rating ? "outline" : "default"}
@@ -370,6 +403,14 @@ const Index = () => {
                 >
                   <Icon name={game.rating ? "Edit" : "Plus"} size={18} className="mr-2" />
                   {game.rating ? 'Изменить оценку' : 'Добавить оценку'}
+                </Button>
+                <Button 
+                  onClick={() => openEditDialog(game)}
+                  variant="ghost"
+                  className="w-full"
+                >
+                  <Icon name="Settings" size={18} className="mr-2" />
+                  Редактировать игру
                 </Button>
               </CardContent>
             </Card>
@@ -424,6 +465,70 @@ const Index = () => {
               </Button>
               <Button onClick={handleSaveRating} className="bg-gradient-to-r from-primary to-secondary">
                 Сохранить оценку
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Редактировать игру</DialogTitle>
+              <DialogDescription>Измени информацию об игре</DialogDescription>
+            </DialogHeader>
+            {editGame && (
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="edit-title">Название игры</Label>
+                  <Input
+                    id="edit-title"
+                    value={editGame.title}
+                    onChange={(e) => setEditGame({ ...editGame, title: e.target.value })}
+                    placeholder="The Last of Us"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-year">Год выпуска</Label>
+                  <Input
+                    id="edit-year"
+                    type="number"
+                    value={editGame.year}
+                    onChange={(e) => setEditGame({ ...editGame, year: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-description">Описание</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editGame.description}
+                    onChange={(e) => setEditGame({ ...editGame, description: e.target.value })}
+                    placeholder="Краткое описание игры..."
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-image">Обложка игры</Label>
+                  <div className="flex items-center gap-4 mt-2">
+                    {editGame.imageUrl !== '/placeholder.svg' && (
+                      <img src={editGame.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
+                    )}
+                    <Input
+                      id="edit-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditImageUpload}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={!editGame?.title}>
+                Сохранить изменения
               </Button>
             </DialogFooter>
           </DialogContent>
