@@ -21,6 +21,8 @@ interface GameRating {
   personal: number;
 }
 
+type GameStatus = 'completed' | 'dropped' | 'not_played' | 'playing' | 'on_hold';
+
 interface Game {
   id: string;
   title: string;
@@ -28,6 +30,8 @@ interface Game {
   imageUrl: string;
   rating?: GameRating;
   description: string;
+  hoursPlayed?: number;
+  status?: GameStatus;
 }
 
 const Index = () => {
@@ -69,8 +73,12 @@ const Index = () => {
     title: '',
     year: new Date().getFullYear(),
     imageUrl: '/placeholder.svg',
-    description: ''
+    description: '',
+    hoursPlayed: undefined as number | undefined,
+    status: undefined as GameStatus | undefined
   });
+
+  const [imageSource, setImageSource] = useState<'upload' | 'url'>('url');
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,6 +100,28 @@ const Index = () => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const getStatusLabel = (status?: GameStatus) => {
+    const labels = {
+      completed: 'Пройдена',
+      dropped: 'Дроп',
+      not_played: 'Не играл',
+      playing: 'В процессе',
+      on_hold: 'Отложено'
+    };
+    return status ? labels[status] : 'Не указано';
+  };
+
+  const getStatusColor = (status?: GameStatus) => {
+    const colors = {
+      completed: 'bg-green-500',
+      dropped: 'bg-red-500',
+      not_played: 'bg-gray-500',
+      playing: 'bg-blue-500',
+      on_hold: 'bg-yellow-500'
+    };
+    return status ? colors[status] : 'bg-gray-400';
   };
 
   const openEditDialog = (game: Game) => {
@@ -225,9 +255,9 @@ const Index = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2">
-                🎮 Game Library
+                🎮 dendarkz
               </h1>
-              <p className="text-muted-foreground text-lg">Твоя персональная библиотека игр с уникальной системой оценивания</p>
+              <p className="text-muted-foreground text-lg">Уникальная система оценивания видеоигрового опыта — Индекс игрового опыта</p>
             </div>
             
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -272,18 +302,63 @@ const Index = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="image">Обложка игры</Label>
-                    <div className="flex items-center gap-4 mt-2">
-                      {newGame.imageUrl !== '/placeholder.svg' && (
-                        <img src={newGame.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
+                    <Label>Обложка игры</Label>
+                    <div className="space-y-3 mt-2">
+                      <Select value={imageSource} onValueChange={(v: 'upload' | 'url') => setImageSource(v)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="url">По ссылке</SelectItem>
+                          <SelectItem value="upload">Загрузить файл</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      {imageSource === 'url' ? (
+                        <Input
+                          placeholder="https://example.com/image.jpg"
+                          value={newGame.imageUrl === '/placeholder.svg' ? '' : newGame.imageUrl}
+                          onChange={(e) => setNewGame({ ...newGame, imageUrl: e.target.value || '/placeholder.svg' })}
+                        />
+                      ) : (
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                        />
                       )}
+                      
+                      {newGame.imageUrl !== '/placeholder.svg' && (
+                        <img src={newGame.imageUrl} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="hours">Часов в игре</Label>
                       <Input
-                        id="image"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="flex-1"
+                        id="hours"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={newGame.hoursPlayed || ''}
+                        onChange={(e) => setNewGame({ ...newGame, hoursPlayed: e.target.value ? parseInt(e.target.value) : undefined })}
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="status">Статус</Label>
+                      <Select value={newGame.status} onValueChange={(v: GameStatus) => setNewGame({ ...newGame, status: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Не указано" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="completed">Пройдена</SelectItem>
+                          <SelectItem value="playing">В процессе</SelectItem>
+                          <SelectItem value="on_hold">Отложено</SelectItem>
+                          <SelectItem value="dropped">Дроп</SelectItem>
+                          <SelectItem value="not_played">Не играл</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -393,6 +468,21 @@ const Index = () => {
               <CardHeader>
                 <CardTitle className="text-xl">{game.title}</CardTitle>
                 <CardDescription className="line-clamp-2">{game.description}</CardDescription>
+                {(game.status || game.hoursPlayed) && (
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    {game.status && (
+                      <Badge className={`${getStatusColor(game.status)} text-white`}>
+                        {getStatusLabel(game.status)}
+                      </Badge>
+                    )}
+                    {game.hoursPlayed !== undefined && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Icon name="Clock" size={14} />
+                        {game.hoursPlayed}ч
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </CardHeader>
               
               <CardContent className="space-y-2">
@@ -507,18 +597,49 @@ const Index = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-image">Обложка игры</Label>
-                  <div className="flex items-center gap-4 mt-2">
-                    {editGame.imageUrl !== '/placeholder.svg' && (
-                      <img src={editGame.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
-                    )}
+                  <Label>Обложка игры</Label>
+                  <div className="space-y-3 mt-2">
                     <Input
-                      id="edit-image"
+                      placeholder="https://example.com/image.jpg или загрузи файл"
+                      value={editGame.imageUrl === '/placeholder.svg' ? '' : editGame.imageUrl}
+                      onChange={(e) => setEditGame({ ...editGame, imageUrl: e.target.value || '/placeholder.svg' })}
+                    />
+                    <Input
                       type="file"
                       accept="image/*"
                       onChange={handleEditImageUpload}
-                      className="flex-1"
                     />
+                    {editGame.imageUrl !== '/placeholder.svg' && (
+                      <img src={editGame.imageUrl} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-hours">Часов в игре</Label>
+                    <Input
+                      id="edit-hours"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={editGame.hoursPlayed || ''}
+                      onChange={(e) => setEditGame({ ...editGame, hoursPlayed: e.target.value ? parseInt(e.target.value) : undefined })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-status">Статус</Label>
+                    <Select value={editGame.status} onValueChange={(v: GameStatus) => setEditGame({ ...editGame, status: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Не указано" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="completed">Пройдена</SelectItem>
+                        <SelectItem value="playing">В процессе</SelectItem>
+                        <SelectItem value="on_hold">Отложено</SelectItem>
+                        <SelectItem value="dropped">Дроп</SelectItem>
+                        <SelectItem value="not_played">Не играл</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
