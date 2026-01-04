@@ -59,6 +59,7 @@ const Index = () => {
   ]);
 
   const [filterYear, setFilterYear] = useState<string>('all');
+  const [filterRating, setFilterRating] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   
@@ -68,6 +69,17 @@ const Index = () => {
     imageUrl: '/placeholder.svg',
     description: ''
   });
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewGame({ ...newGame, imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [editRating, setEditRating] = useState<GameRating>({
     story: 5,
@@ -147,9 +159,17 @@ const Index = () => {
     });
   };
 
-  const filteredGames = filterYear === 'all' 
-    ? games 
-    : games.filter(g => g.year.toString() === filterYear);
+  let filteredGames = games;
+  
+  if (filterYear !== 'all') {
+    filteredGames = filteredGames.filter(g => g.year.toString() === filterYear);
+  }
+  
+  if (filterRating === 'rated') {
+    filteredGames = filteredGames.filter(g => g.rating);
+  } else if (filterRating === 'unrated') {
+    filteredGames = filteredGames.filter(g => !g.rating);
+  }
 
   const ratedGames = games.filter(g => g.rating).length;
   const unratedGames = games.length - ratedGames;
@@ -218,6 +238,21 @@ const Index = () => {
                       rows={3}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="image">Обложка игры</Label>
+                    <div className="flex items-center gap-4 mt-2">
+                      {newGame.imageUrl !== '/placeholder.svg' && (
+                        <img src={newGame.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
+                      )}
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button onClick={handleAddGame} disabled={!newGame.title}>
@@ -260,21 +295,37 @@ const Index = () => {
             </Card>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Label className="text-sm font-semibold">Фильтр по году:</Label>
-            <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Все годы" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все годы</SelectItem>
-                {years.map(year => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-6 flex-wrap">
+            <div className="flex items-center gap-4">
+              <Label className="text-sm font-semibold">Год:</Label>
+              <Select value={filterYear} onValueChange={setFilterYear}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Все годы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все годы</SelectItem>
+                  {years.map(year => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Label className="text-sm font-semibold">Статус:</Label>
+              <Select value={filterRating} onValueChange={setFilterRating}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Все игры" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все игры</SelectItem>
+                  <SelectItem value="rated">Оценённые</SelectItem>
+                  <SelectItem value="unrated">Без оценки</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </header>
 
